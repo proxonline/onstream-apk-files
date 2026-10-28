@@ -229,6 +229,12 @@ jobs:
           path: jadx-sources.zip
           if-no-files-found: error
           retention-days: 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apktool-original
+          path: apktool-output.zip
+          if-no-files-found: error
+          retention-days: 3
       - name: Publish report
         shell: bash
         run: |
