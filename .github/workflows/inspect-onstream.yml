@@ -173,7 +173,7 @@ jobs:
           out = "onstream-source-subset.zip"
           keep = []
           api_annotation = re.compile(r"@(GET|POST|PUT|DELETE|PATCH|HTTP|Headers|FormUrlEncoded|Multipart|Streaming)\b")
-          core = "sources/com/maertsno/m/"
+          core = "sources/com/maertsno/"
           player = "sources/com/maertsno/exoplayer/"
           with zipfile.ZipFile(src) as z, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
               for info in z.infolist():
@@ -184,6 +184,10 @@ jobs:
                   if p.startswith(core) and p.endswith((".java", ".kt")):
                       include = True
                   elif p.startswith(player) and p.endswith((".java", ".kt")):
+                      include = True
+                  elif p.startswith("sources/p175s6/") and p.endswith((".java", ".kt")):
+                      include = True
+                  elif p.startswith("sources/L6/") and p.endswith((".java", ".kt")):
                       include = True
                   elif p == "resources/AndroidManifest.xml":
                       include = True
@@ -199,7 +203,7 @@ jobs:
                       else:
                           try:
                               txt = z.read(info).decode("utf-8", "ignore")
-                              include = bool(api_annotation.search(txt)) or ("Retrofit" in txt and "OkHttp" in txt)
+                              include = bool(api_annotation.search(txt)) or bool(re.search(r"(?i)(retrofit|okhttp|com\.maertsno\.(data|domain)|baseurl|base_url|api[_-]?key|firebase.remoteconfig)", txt))
                           except Exception:
                               include = False
                   if include:
