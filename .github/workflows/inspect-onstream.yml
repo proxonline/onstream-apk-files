@@ -164,6 +164,61 @@ jobs:
               f.write("\n".join(out)+"\n")
           print("Finished focused archive analysis.")
           PY
+      - name: Package relevant decompiled source for analysis
+        shell: bash
+        run: |
+          python - <<'PY'
+          import zipfile, re, os
+          src = "jadx-sources.zip"
+          out = "onstream-source-subset.zip"
+          keep = []
+          api_annotation = re.compile(r"@(GET|POST|PUT|DELETE|PATCH|HTTP|Headers|FormUrlEncoded|Multipart|Streaming)\b")
+          core = "sources/com/maertsno/m/"
+          player = "sources/com/maertsno/exoplayer/"
+          with zipfile.ZipFile(src) as z, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+              for info in z.infolist():
+                  p = info.filename
+                  if info.is_dir():
+                      continue
+                  include = False
+                  if p.startswith(core) and p.endswith((".java", ".kt")):
+                      include = True
+                  elif p.startswith(player) and p.endswith((".java", ".kt")):
+                      include = True
+                  elif p == "resources/AndroidManifest.xml":
+                      include = True
+                  elif p.startswith("resources/res/navigation/") and p.endswith(".xml"):
+                      include = True
+                  elif p.startswith("resources/res/layout/") and p.endswith(".xml") and re.search(r"(activity_main|activity_player|activity_movie_player|activity_trailer|fragment_home|fragment_main|item_movie|item_series|item_episode|bottom_navigation)", p, re.I):
+                      include = True
+                  elif p.startswith("resources/res/values/") and p.endswith(".xml") and re.search(r"(strings|colors|dimens|styles|themes|arrays|ids)\.xml$", p, re.I):
+                      include = True
+                  elif p.startswith("sources/") and p.endswith((".java", ".kt")) and info.file_size < 250000:
+                      if any(x in p.lower() for x in ("androidx/", "kotlin/", "kotlinx/", "com/google/", "com/android/", "org/jetbrains/", "okhttp3/", "retrofit2/", "com/squareup/", "com/bumptech/", "com/facebook/")):
+                          include = False
+                      else:
+                          try:
+                              txt = z.read(info).decode("utf-8", "ignore")
+                              include = bool(api_annotation.search(txt)) or ("Retrofit" in txt and "OkHttp" in txt)
+                          except Exception:
+                              include = False
+                  if include:
+                      try:
+                          dst.writestr("jadx/" + p, z.read(info))
+                          keep.append(p)
+                      except Exception:
+                          pass
+          print("Packaged", len(keep), "files; archive size", os.path.getsize(out), "bytes.")
+          print("Representative files:")
+          for p in keep[:100]:
+              print(p)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onstream-source-subset
+          path: onstream-source-subset.zip
+          if-no-files-found: error
+          retention-days: 3
       - name: Publish report
         shell: bash
         run: |
